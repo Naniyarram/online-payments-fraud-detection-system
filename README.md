@@ -1,11 +1,5 @@
 # 🛡️ Online Payments Fraud Detection System
 
-[![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi)](https://fastapi.tiangolo.com)
-[![Streamlit](https://img.shields.io/badge/Streamlit-FF4B4B?style=for-the-badge&logo=streamlit)](https://streamlit.io)
-[![Scikit-Learn](https://img.shields.io/badge/Scikit--Learn-F7931E?style=for-the-badge&logo=scikit-learn)](https://scikit-learn.org)
-[![MLflow](https://img.shields.io/badge/MLflow-0194E2?style=for-the-badge&logo=mlflow)](https://mlflow.org)
-[![Groq](https://img.shields.io/badge/Llama%203%20%2F%20Groq-orange?style=for-the-badge)](https://groq.com)
-
 A production-ready decision-support system designed to help fraud analysts evaluate credit card transactions. The system integrates machine learning classification, local feature explainability via SHAP, and a GenAI analyst copilot to convert raw model predictions into natural-language audit trails.
 
 ---
