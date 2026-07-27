@@ -102,8 +102,8 @@ To prevent LLM hallucinations, the Copilot's chat engine uses a strictly bounded
 ### 1. Set Up Environment
 ```bash
 # Clone the repository
-git clone https://github.com/Naniyarram/Enterprise-Fraud-Intelligence-Console.git
-cd Enterprise-Fraud-Intelligence-Console
+git clone https://github.com/Naniyarram/online-payments-fraud-detection-system.git
+cd online-payments-fraud-detection-system
 
 # Create virtual environment
 python -m venv venv
