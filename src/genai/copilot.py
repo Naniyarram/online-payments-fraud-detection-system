@@ -6,6 +6,9 @@ from src.genai.db import HybridRetriever
 
 logger = get_logger(__name__)
 
+from dotenv import load_dotenv
+load_dotenv(override=True)
+
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 
 class FraudCopilot:

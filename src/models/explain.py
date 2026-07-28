@@ -34,14 +34,15 @@ class SHAPExplainer:
         else:
             base_value = shap_values.base_values[0]
 
-        # Extract features and their attributions
+        # Extract features and their attributions safely
         attributions = []
         for i, feat in enumerate(self.feature_names):
-            attributions.append({
-                "feature": feat,
-                "value": float(instance_df[feat].iloc[0]),
-                "shap_value": float(values[0, i])
-            })
+            if feat in instance_df.columns and i < values.shape[1]:
+                attributions.append({
+                    "feature": feat,
+                    "value": float(instance_df[feat].iloc[0]),
+                    "shap_value": float(values[0, i])
+                })
             
         # Sort by absolute SHAP value to find most influential features
         attributions.sort(key=lambda x: abs(x["shap_value"]), reverse=True)

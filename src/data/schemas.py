@@ -1,7 +1,9 @@
-from pydantic import BaseModel, Field
-from datetime import datetime
+from pydantic import BaseModel, Field, ConfigDict
 
 class TransactionSchema(BaseModel):
+    # Transaction payload validation schema
+    model_config = ConfigDict(protected_namespaces=())
+
     trans_date_trans_time: str = Field(..., description="Timestamp of transaction in YYYY-MM-DD HH:MM:SS format")
     cc_num: int = Field(..., description="Credit card number")
     merchant: str = Field(..., description="Merchant name")
@@ -24,5 +26,3 @@ class TransactionSchema(BaseModel):
     merch_lat: float = Field(..., ge=-90, le=90, description="Latitude of merchant")
     merch_long: float = Field(..., ge=-180, le=180, description="Longitude of merchant")
 
-    class Config:
-        protected_namespaces = () # Avoid warning for model_ prefix if Pydantic raises it

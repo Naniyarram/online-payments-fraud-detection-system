@@ -2,7 +2,10 @@ import os
 import pandas as pd
 import joblib
 from fastapi import APIRouter, HTTPException, Depends
-from src.api.schemas import PredictionRequest, PredictionResponse, ExplanationResponse, ChatRequest, ChatResponse
+from src.api.schemas import (
+    PredictionRequest, PredictionResponse, ExplanationResponse,
+    ChatRequest, ChatResponse, RetrievalRequest, RetrievalResponse
+)
 from src.utils.logger import get_logger
 from src.features.build_features import FeaturePipeline
 from src.models.explain import SHAPExplainer
@@ -35,18 +38,20 @@ def load_artifacts():
         MODEL = joblib.load(model_path)
         PIPELINE = joblib.load(pipeline_path)
         
-        # Determine feature names from pipeline
-        feature_names = [
-            'amt', 'lat', 'long', 'city_pop', 'unix_time', 'merch_lat', 'merch_long',
-            'distance_km', 'age', 'hour', 'day_of_week', 'is_weekend', 'month',
-            'sin_hour', 'cos_hour', 'sin_day', 'cos_day', 'merchant_fraud_rate',
-            'category_fraud_rate', 'state_fraud_rate', 'job_fraud_rate',
-            'customer_pagerank', 'merchant_pagerank', 'time_since_prev_trans_min',
-            'cum_count_1h', 'cum_sum_1h', 'cum_mean_1h', 'cum_std_1h', 'cum_count_24h',
-            'cum_sum_24h', 'cum_mean_24h', 'cum_std_24h', 'amt_to_mean_ratio_1h',
-            'amt_to_mean_ratio_24h', 'amt_diff_mean_24h', 'amt_z_score_24h',
-            'gender_code', 'category_code'
-        ]
+        # Use dynamic feature names from pipeline if available, else fallback
+        feature_names = getattr(PIPELINE, "feature_names", None)
+        if not feature_names:
+            feature_names = [
+                'amt', 'lat', 'long', 'city_pop', 'unix_time', 'merch_lat', 'merch_long',
+                'distance_km', 'age', 'hour', 'day_of_week', 'is_weekend', 'month',
+                'sin_hour', 'cos_hour', 'sin_day', 'cos_day', 'merchant_fraud_rate',
+                'category_fraud_rate', 'state_fraud_rate', 'job_fraud_rate',
+                'customer_pagerank', 'merchant_pagerank', 'time_since_prev_trans_min',
+                'cum_count_1h', 'cum_sum_1h', 'cum_mean_1h', 'cum_std_1h', 'cum_count_24h',
+                'cum_sum_24h', 'cum_mean_24h', 'cum_std_24h', 'amt_to_mean_ratio_1h',
+                'amt_to_mean_ratio_24h', 'amt_diff_mean_24h', 'amt_z_score_24h',
+                'gender_code', 'category_code'
+            ]
         EXPLAINER = SHAPExplainer(MODEL, feature_names)
     else:
         logger.warning("Artifacts not found! Using simulated mock prediction for testing/bootstrapping.")
@@ -55,14 +60,11 @@ def load_artifacts():
 async def predict(request: PredictionRequest):
     logger.info(f"Received prediction request for trans_num: {request.transaction.trans_num}")
     
-    # Convert request item to dataframe
-    tx_dict = request.transaction.dict()
+    tx_dict = request.transaction.model_dump()
     df_raw = pd.DataFrame([tx_dict])
     
     try:
         if MODEL is None or PIPELINE is None:
-            # Simulated model prediction
-            # Base it on AMT to be slightly realistic for mocks
             prob = 0.85 if request.transaction.amt > 800 else 0.01
             decision = "ALERT - HIGH FRAUD RISK" if prob >= THRESHOLD else "APPROVE"
             return PredictionResponse(
@@ -72,10 +74,7 @@ async def predict(request: PredictionRequest):
                 threshold_applied=THRESHOLD
             )
             
-        # Process transaction using fitted pipeline
         df_feat = PIPELINE.transform(df_raw)
-        
-        # Get probability prediction
         prob = float(MODEL.predict_proba(df_feat)[0, 1])
         decision = "ALERT - HIGH FRAUD RISK" if prob >= THRESHOLD else "APPROVE"
         
@@ -93,12 +92,11 @@ async def predict(request: PredictionRequest):
 async def explain(request: PredictionRequest):
     logger.info(f"Received explanation request for trans_num: {request.transaction.trans_num}")
     
-    tx_dict = request.transaction.dict()
+    tx_dict = request.transaction.model_dump()
     df_raw = pd.DataFrame([tx_dict])
     
     try:
         if MODEL is None or PIPELINE is None:
-            # Mock Explanation
             mock_insights = {
                 "base_value": 0.02,
                 "prediction_value": 1.0,
@@ -125,10 +123,7 @@ async def explain(request: PredictionRequest):
         df_feat = PIPELINE.transform(df_raw)
         prob = float(MODEL.predict_proba(df_feat)[0, 1])
         
-        # Calculate SHAP values
         insights = EXPLAINER.explain_instance(df_feat)
-        
-        # Generate LLM forensic analyst report
         report = COPILOT.generate_analyst_report(tx_dict, insights, prob)
         
         return ExplanationResponse(
@@ -152,3 +147,16 @@ async def copilot_chat(request: ChatRequest):
     except Exception as e:
         logger.error(f"Error handling chat: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Chat error: {str(e)}")
+
+@router.post("/copilot/evidence", response_model=RetrievalResponse)
+async def copilot_evidence(request: RetrievalRequest):
+    try:
+        if RETRIEVER is None:
+            return RetrievalResponse(query=request.query, cases=[])
+            
+        cases = RETRIEVER.retrieve(request.query, top_k=request.top_k or 3)
+        return RetrievalResponse(query=request.query, cases=cases)
+    except Exception as e:
+        logger.error(f"Error retrieving evidence: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Retrieval error: {str(e)}")
+

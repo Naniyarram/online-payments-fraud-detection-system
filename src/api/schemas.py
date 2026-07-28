@@ -23,3 +23,12 @@ class ChatRequest(BaseModel):
 
 class ChatResponse(BaseModel):
     answer: str
+
+class RetrievalRequest(BaseModel):
+    query: str
+    top_k: Optional[int] = 3
+
+class RetrievalResponse(BaseModel):
+    query: str
+    cases: List[Dict[str, Any]]
+

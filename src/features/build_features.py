@@ -28,6 +28,8 @@ class FeaturePipeline:
         self.customer_pr = {}
         self.merchant_pr = {}
         self.global_fraud_rate = 0.0
+        self.category_mapping = {}
+        self.feature_names = []
 
     def fit(self, train_df: pd.DataFrame):
         logger.info("Fitting Feature Engineering Pipeline...")
@@ -38,6 +40,11 @@ class FeaturePipeline:
         self.state_fraud_rates = train_df.groupby('state')['is_fraud'].mean().to_dict() if 'is_fraud' in train_df.columns else {}
         self.job_fraud_rates = train_df.groupby('job')['is_fraud'].mean().to_dict() if 'is_fraud' in train_df.columns else {}
         
+        # Save consistent category mapping to avoid training-serving skew
+        if 'category' in train_df.columns:
+            unique_cats = sorted(train_df['category'].dropna().unique().tolist())
+            self.category_mapping = {cat: idx for idx, cat in enumerate(unique_cats)}
+
         self.customer_pr, self.merchant_pr = build_network_features(train_df)
         logger.info("Feature Engineering Pipeline fitted successfully.")
         return self
@@ -86,18 +93,18 @@ class FeaturePipeline:
         df['time_since_prev_trans_min'] = df['time_since_prev_trans_min'].fillna(-1.0)
         df = df.drop(columns=['prev_trans_time'])
 
-        # Compute rolling window features correctly mapping multi-index back to df
+        # Compute rolling window features safely
         rolling_1h = df.groupby('cc_num').rolling('1h', on='trans_date_trans_time')['amt']
-        df['cum_count_1h'] = rolling_1h.count().reset_index(level=0, drop=True)
-        df['cum_sum_1h'] = rolling_1h.sum().reset_index(level=0, drop=True)
-        df['cum_mean_1h'] = df['cum_sum_1h'] / df['cum_count_1h']
-        df['cum_std_1h'] = rolling_1h.std().reset_index(level=0, drop=True).fillna(0.0)
+        df['cum_count_1h'] = rolling_1h.count().values
+        df['cum_sum_1h'] = rolling_1h.sum().values
+        df['cum_mean_1h'] = df['cum_sum_1h'] / np.maximum(df['cum_count_1h'], 1.0)
+        df['cum_std_1h'] = np.nan_to_num(rolling_1h.std().values, nan=0.0)
         
         rolling_24h = df.groupby('cc_num').rolling('24h', on='trans_date_trans_time')['amt']
-        df['cum_count_24h'] = rolling_24h.count().reset_index(level=0, drop=True)
-        df['cum_sum_24h'] = rolling_24h.sum().reset_index(level=0, drop=True)
-        df['cum_mean_24h'] = df['cum_sum_24h'] / df['cum_count_24h']
-        df['cum_std_24h'] = rolling_24h.std().reset_index(level=0, drop=True).fillna(0.0)
+        df['cum_count_24h'] = rolling_24h.count().values
+        df['cum_sum_24h'] = rolling_24h.sum().values
+        df['cum_mean_24h'] = df['cum_sum_24h'] / np.maximum(df['cum_count_24h'], 1.0)
+        df['cum_std_24h'] = np.nan_to_num(rolling_24h.std().values, nan=0.0)
 
         df['amt_to_mean_ratio_1h'] = df['amt'] / (df['cum_mean_1h'] + 1e-5)
         df['amt_to_mean_ratio_24h'] = df['amt'] / (df['cum_mean_24h'] + 1e-5)
@@ -105,16 +112,25 @@ class FeaturePipeline:
         df['amt_z_score_24h'] = (df['amt'] - df['cum_mean_24h']) / (df['cum_std_24h'] + 1e-5)
 
         df['gender_code'] = df['gender'].map({'M': 1, 'F': 0}).fillna(-1)
-        df['category_code'] = df['category'].astype('category').cat.codes
+        
+        # Apply consistent category encoding
+        if self.category_mapping:
+            df['category_code'] = df['category'].map(self.category_mapping).fillna(-1).astype(int)
+        else:
+            df['category_code'] = df['category'].astype('category').cat.codes
 
         cols_to_drop = [
             'trans_date_trans_time', 'cc_num', 'merchant', 'category', 'first', 'last', 
-            'gender', 'street', 'city', 'state', 'zip', 'job', 'dob', 'trans_num'
+            'gender', 'street', 'city', 'state', 'zip', 'job', 'dob', 'trans_num', 'is_fraud'
         ]
         features_df = df.drop(columns=cols_to_drop, errors='ignore')
         
-        # Fill any remaining NaNs globally to ensure robust modeling pipelines
+        # Fill missing values
         features_df = features_df.fillna(0.0)
+        
+        # Cache list of feature names on pipeline
+        self.feature_names = features_df.columns.tolist()
         
         logger.info(f"Feature engineering complete. Generated {features_df.shape[1]} features.")
         return features_df
+

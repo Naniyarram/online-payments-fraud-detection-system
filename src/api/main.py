@@ -6,6 +6,9 @@ from src.utils.logger import get_logger
 from contextlib import asynccontextmanager
 import time
 
+from dotenv import load_dotenv
+load_dotenv(override=True)
+
 logger = get_logger(__name__)
 
 @asynccontextmanager

@@ -7,27 +7,66 @@ from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
-# Sample past fraud database templates to populate the database
 PAST_CASES = [
     {
         "id": "case_001",
-        "text": "Cardholder flagged transaction for electronics purchase in high-risk state. Pattern matches 'mule redirection' where shipping address differs from cardholder home state.",
+        "text": "Cardholder flagged transaction for high-value electronics purchase in a high-risk state. Pattern matches 'mule redirection' where shipping address differs from cardholder home state.",
         "category": "shopping_net", "is_fraud": 1
     },
     {
         "id": "case_002",
-        "text": "Multiple microtransactions (under $5) executed within 1 minute, followed by a large $1000 cash withdraw. Typical card-testing behaviour prior to liquidation.",
+        "text": "Multiple microtransactions under $5 executed within 1 minute, followed by a large $1000 cash withdrawal. Typical card-testing behaviour prior to liquidation.",
         "category": "gas_transport", "is_fraud": 1
     },
     {
         "id": "case_003",
-        "text": "Transaction declined due to sudden geographic jump (over 500 km) from previous transaction location under 30 minutes. Pattern matches card cloning.",
+        "text": "Transaction declined due to sudden geographic jump over 500 km from previous transaction location under 30 minutes. Pattern matches physical card cloning.",
         "category": "grocery_pos", "is_fraud": 1
     },
     {
         "id": "case_004",
         "text": "High volume of entertainment and restaurant transactions at late night hours. Customer disputes charges. Investigated as stolen physical credit card.",
         "category": "entertainment", "is_fraud": 1
+    },
+    {
+        "id": "case_005",
+        "text": "Cardholder velocity spike: 8 luxury fashion orders within 2 hours totaling $4,500 across 3 different online merchants in NY.",
+        "category": "shopping_net", "is_fraud": 1
+    },
+    {
+        "id": "case_006",
+        "text": "Cross-border travel purchase originating from suspicious IP subnet while customer physical location registered in California.",
+        "category": "travel", "is_fraud": 1
+    },
+    {
+        "id": "case_007",
+        "text": "BIN attack sequence detected with sequential credit card trial attempts at automated fuel pump terminal.",
+        "category": "gas_transport", "is_fraud": 1
+    },
+    {
+        "id": "case_008",
+        "text": "Account Takeover (ATO): Password reset followed immediately by high-value gift card purchases at online retail store.",
+        "category": "shopping_net", "is_fraud": 1
+    },
+    {
+        "id": "case_009",
+        "text": "Repeated grocery terminal transactions with abnormal spending 5x above cardholder's 24h baseline average.",
+        "category": "grocery_pos", "is_fraud": 1
+    },
+    {
+        "id": "case_010",
+        "text": "Legitimate cardholder purchasing routine monthly groceries at local supermarket during normal daytime hours.",
+        "category": "grocery_pos", "is_fraud": 0
+    },
+    {
+        "id": "case_011",
+        "text": "Approved recurring digital subscription charge for streaming service matching multi-year history.",
+        "category": "entertainment", "is_fraud": 0
+    },
+    {
+        "id": "case_012",
+        "text": "Standard gas station refueling charge within cardholder home zip code matching regular commuting behavior.",
+        "category": "gas_transport", "is_fraud": 0
     }
 ]
 

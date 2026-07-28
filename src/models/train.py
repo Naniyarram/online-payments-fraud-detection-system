@@ -19,103 +19,125 @@ logger = get_logger(__name__)
 class ModelTrainer:
     def __init__(self, experiment_name: str = "Fraud_Detection_Intelligence"):
         self.experiment_name = experiment_name
-        mlflow.set_experiment(self.experiment_name)
+        try:
+            import mlflow
+            mlflow.set_experiment(self.experiment_name)
+            self.mlflow_available = True
+        except Exception as e:
+            logger.warning(f"MLflow tracking disabled due to environment issues: {e}")
+            self.mlflow_available = False
 
     def train_xgboost(self, X_train: pd.DataFrame, y_train: pd.Series, X_val: pd.DataFrame, y_val: pd.Series) -> XGBClassifier:
         logger.info("Starting XGBoost training...")
-        with mlflow.start_run(run_name="XGBoost_Baseline"):
-            scale_pos_weight = (len(y_train) - y_train.sum()) / y_train.sum()
-            
-            model = XGBClassifier(
-                n_estimators=100,
-                max_depth=6,
-                learning_rate=0.1,
-                scale_pos_weight=scale_pos_weight,
-                eval_metric="aucpr",
-                random_state=42
-            )
-            model._estimator_type = "classifier"
-            model.fit(X_train, y_train, eval_set=[(X_val, y_val)], verbose=False)
-            
-            probs = model.predict_proba(X_val)[:, 1]
-            metrics = evaluate_predictions(y_val, probs)
-            
-            mlflow.log_params(model.get_params())
-            mlflow.log_metrics(metrics)
-            mlflow.xgboost.log_model(model, "model")
-            
-            logger.info(f"XGBoost Baseline trained successfully. Metrics: {metrics}")
-            return model
+        scale_pos_weight = (len(y_train) - y_train.sum()) / y_train.sum()
+        
+        model = XGBClassifier(
+            n_estimators=100,
+            max_depth=6,
+            learning_rate=0.1,
+            scale_pos_weight=scale_pos_weight,
+            eval_metric="aucpr",
+            random_state=42
+        )
+        model._estimator_type = "classifier"
+        model.fit(X_train, y_train, eval_set=[(X_val, y_val)], verbose=False)
+        
+        probs = model.predict_proba(X_val)[:, 1]
+        metrics = evaluate_predictions(y_val, probs)
+        
+        if self.mlflow_available:
+            try:
+                import mlflow
+                with mlflow.start_run(run_name="XGBoost_Baseline"):
+                    mlflow.log_params(model.get_params())
+                    mlflow.log_metrics(metrics)
+            except Exception as e:
+                logger.warning(f"Failed to log run to MLflow: {e}")
+                
+        logger.info(f"XGBoost Baseline trained successfully. Metrics: {metrics}")
+        return model
 
     def train_lightgbm(self, X_train: pd.DataFrame, y_train: pd.Series, X_val: pd.DataFrame, y_val: pd.Series) -> LGBMClassifier:
         logger.info("Starting LightGBM training...")
-        with mlflow.start_run(run_name="LightGBM_Baseline"):
-            model = LGBMClassifier(
-                n_estimators=100,
-                max_depth=6,
-                learning_rate=0.1,
-                class_weight='balanced',
-                random_state=42,
-                verbosity=-1
-            )
-            model._estimator_type = "classifier"
-            model.fit(X_train, y_train)
-            
-            probs = model.predict_proba(X_val)[:, 1]
-            metrics = evaluate_predictions(y_val, probs)
-            
-            mlflow.log_params(model.get_params())
-            mlflow.log_metrics(metrics)
-            mlflow.sklearn.log_model(model, "model")
-            
-            logger.info(f"LightGBM Baseline trained. Metrics: {metrics}")
-            return model
+        model = LGBMClassifier(
+            n_estimators=100,
+            max_depth=6,
+            learning_rate=0.1,
+            class_weight='balanced',
+            random_state=42,
+            verbosity=-1
+        )
+        model._estimator_type = "classifier"
+        model.fit(X_train, y_train)
+        
+        probs = model.predict_proba(X_val)[:, 1]
+        metrics = evaluate_predictions(y_val, probs)
+        
+        if self.mlflow_available:
+            try:
+                import mlflow
+                with mlflow.start_run(run_name="LightGBM_Baseline"):
+                    mlflow.log_params(model.get_params())
+                    mlflow.log_metrics(metrics)
+            except Exception as e:
+                logger.warning(f"Failed to log run to MLflow: {e}")
+                
+        logger.info(f"LightGBM Baseline trained. Metrics: {metrics}")
+        return model
 
     def train_catboost(self, X_train: pd.DataFrame, y_train: pd.Series, X_val: pd.DataFrame, y_val: pd.Series) -> CatBoostClassifier:
         logger.info("Starting CatBoost training...")
-        with mlflow.start_run(run_name="CatBoost_Baseline"):
-            model = CatBoostClassifier(
-                iterations=100,
-                depth=6,
-                learning_rate=0.1,
-                auto_class_weights='Balanced',
-                random_state=42,
-                verbose=False
-            )
-            model._estimator_type = "classifier"
-            model.fit(X_train, y_train)
-            
-            probs = model.predict_proba(X_val)[:, 1]
-            metrics = evaluate_predictions(y_val, probs)
-            
-            mlflow.log_params(model.get_params())
-            mlflow.log_metrics(metrics)
-            mlflow.sklearn.log_model(model, "model")
-            
-            logger.info(f"CatBoost Baseline trained. Metrics: {metrics}")
-            return model
+        model = CatBoostClassifier(
+            iterations=100,
+            depth=6,
+            learning_rate=0.1,
+            auto_class_weights='Balanced',
+            random_state=42,
+            verbose=False
+        )
+        model._estimator_type = "classifier"
+        model.fit(X_train, y_train)
+        
+        probs = model.predict_proba(X_val)[:, 1]
+        metrics = evaluate_predictions(y_val, probs)
+        
+        if self.mlflow_available:
+            try:
+                import mlflow
+                with mlflow.start_run(run_name="CatBoost_Baseline"):
+                    mlflow.log_params(model.get_params())
+                    mlflow.log_metrics(metrics)
+            except Exception as e:
+                logger.warning(f"Failed to log run to MLflow: {e}")
+                
+        logger.info(f"CatBoost Baseline trained. Metrics: {metrics}")
+        return model
 
     def train_random_forest(self, X_train: pd.DataFrame, y_train: pd.Series, X_val: pd.DataFrame, y_val: pd.Series) -> RandomForestClassifier:
         logger.info("Starting Random Forest training...")
-        with mlflow.start_run(run_name="RandomForest_Baseline"):
-            model = RandomForestClassifier(
-                n_estimators=100,
-                max_depth=10,
-                class_weight='balanced',
-                n_jobs=-1
-            )
-            model._estimator_type = "classifier"
-            model.fit(X_train, y_train)
-            
-            probs = model.predict_proba(X_val)[:, 1]
-            metrics = evaluate_predictions(y_val, probs)
-            
-            mlflow.log_params(model.get_params())
-            mlflow.log_metrics(metrics)
-            mlflow.sklearn.log_model(model, "model")
-            
-            logger.info(f"Random Forest Baseline trained. Metrics: {metrics}")
-            return model
+        model = RandomForestClassifier(
+            n_estimators=100,
+            max_depth=10,
+            class_weight='balanced',
+            n_jobs=-1
+        )
+        model._estimator_type = "classifier"
+        model.fit(X_train, y_train)
+        
+        probs = model.predict_proba(X_val)[:, 1]
+        metrics = evaluate_predictions(y_val, probs)
+        
+        if self.mlflow_available:
+            try:
+                import mlflow
+                with mlflow.start_run(run_name="RandomForest_Baseline"):
+                    mlflow.log_params(model.get_params())
+                    mlflow.log_metrics(metrics)
+            except Exception as e:
+                logger.warning(f"Failed to log run to MLflow: {e}")
+                
+        logger.info(f"Random Forest Baseline trained. Metrics: {metrics}")
+        return model
 
     def optimize_hyperparameters(self, X_train: pd.DataFrame, y_train: pd.Series, X_val: pd.DataFrame, y_val: pd.Series, n_trials: int = 5) -> Dict[str, Any]:
         logger.info("Running Optuna Hyperparameter Optimization...")

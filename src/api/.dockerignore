@@ -1,0 +1,19 @@
+.git
+.github
+
+__pycache__
+*.pyc
+*.pyo
+
+.pytest_cache
+tests
+
+mlruns
+catboost_info
+outputs
+Interview Ready Preparation
+
+.vscode
+.idea
+
+.env

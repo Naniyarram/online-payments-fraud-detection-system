@@ -38,10 +38,10 @@ def run_pipeline(sample_size: int = 50000):
     train_feat = pipeline.transform(train_raw)
     test_feat = pipeline.transform(test_raw)
     
-    X_train = train_feat.drop(columns=['is_fraud'])
-    y_train = train_feat['is_fraud']
-    X_test = test_feat.drop(columns=['is_fraud'])
-    y_test = test_feat['is_fraud']
+    X_train = train_feat
+    y_train = train_raw['is_fraud']
+    X_test = test_feat
+    y_test = test_raw['is_fraud']
     
     logger.info(f"Training features dimensions: {X_train.shape}")
     logger.info(f"Testing features dimensions: {X_test.shape}")
