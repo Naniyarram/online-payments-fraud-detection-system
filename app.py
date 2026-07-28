@@ -6,16 +6,69 @@ from datetime import datetime, timedelta
 
 # Page config - Native dark theme settings and clean layout
 st.set_page_config(
-    page_title="Fraud Intelligence Console",
+    page_title="Fraud Intelligence Workstation",
     page_icon="🛡️",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
+# Glassmorphic 2026 Enterprise CSS Styling Injection
+st.markdown("""
+<style>
+    /* Dark glassmorphic background & main styling */
+    .stApp {
+        background-color: #0d1117;
+        color: #e6edf3;
+    }
+    
+    /* Card Glassmorphism containers */
+    div[data-testid="stMetricValue"] {
+        font-size: 1.8rem !important;
+        font-weight: 700 !important;
+    }
+    
+    /* Preset Scenario Buttons styling */
+    .stButton > button {
+        border-radius: 8px !important;
+        border: 1px solid rgba(255, 255, 255, 0.12) !important;
+        background: linear-gradient(135deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.8)) !important;
+        color: #f8fafc !important;
+        font-weight: 600 !important;
+        transition: all 0.25s ease-in-out !important;
+    }
+    
+    .stButton > button:hover {
+        border-color: #38bdf8 !important;
+        box-shadow: 0px 4px 15px rgba(56, 189, 248, 0.2) !important;
+        transform: translateY(-1px);
+    }
+    
+    /* Status Badges */
+    .badge-fraud {
+        background-color: rgba(225, 29, 72, 0.2);
+        color: #fda4af;
+        border: 1px solid rgba(225, 29, 72, 0.4);
+        padding: 4px 12px;
+        border-radius: 6px;
+        font-weight: 600;
+    }
+    
+    .badge-clear {
+        background-color: rgba(16, 185, 129, 0.2);
+        color: #6ee7b7;
+        border: 1px solid rgba(16, 185, 129, 0.4);
+        padding: 4px 12px;
+        border-radius: 6px;
+        font-weight: 600;
+    }
+</style>
+""", unsafe_allow_html=True)
+
 # Constants
 API_URL = "http://localhost:8000"
 
-SAMPLE_TX = {
+# Default sample transaction values
+DEFAULT_TX = {
     "amt": 850.00,
     "merchant": "fraud_electronics_outlet",
     "category": "shopping_net",
@@ -27,9 +80,9 @@ SAMPLE_TX = {
     "city_pop": 8500000,
     "job": "Software Engineer",
     "dob": "1990-05-15",
-    "unix_time": 1546344000,
     "merch_lat": 40.8500,
-    "merch_long": -73.8500
+    "merch_long": -73.8500,
+    "age": 35
 }
 
 # Helper function to map SHAP features to human-friendly terms and business descriptions
@@ -70,7 +123,7 @@ def explain_shap_feature(feature_name: str, value: float) -> tuple:
     }
     return mapping.get(feature_name, (feature_name, "Calculated transaction metric"))
 
-# Helper function to generate mock historical risk timeline
+# Helper function to generate historical risk timeline
 def get_mock_timeline(base_amt: float):
     np.random.seed(42)
     dates = [(datetime.now() - timedelta(days=i)).strftime("%Y-%m-%d") for i in range(30)][::-1]
@@ -78,19 +131,16 @@ def get_mock_timeline(base_amt: float):
     amts = np.clip(amts, 5.0, None)
     risks = np.random.beta(a=0.5, b=5.0, size=30)
     risks[15] = 0.88
-    categories = ["gas_transport", "grocery_pos", "shopping_net", "food_dining", "entertainment"]
-    cats = np.random.choice(categories, size=30)
-    merchants = ["uber_trip", "walmart_grocery", "amazon_prime", "starbucks_coffee", "ticketmaster"]
-    merchs = np.random.choice(merchants, size=30)
+    cats = np.random.choice(["gas_transport", "grocery_pos", "shopping_net", "food_dining", "entertainment"], size=30)
+    merchs = np.random.choice(["uber_trip", "walmart_grocery", "amazon_prime", "starbucks_coffee", "ticketmaster"], size=30)
     
-    df = pd.DataFrame({
+    return pd.DataFrame({
         "Date": dates,
         "Merchant": merchs,
         "Category": cats,
         "Amount ($)": np.round(amts, 2),
         "Risk Score": np.round(risks, 4)
     })
-    return df
 
 # Initialize session states
 if "analysis_done" not in st.session_state:
@@ -104,87 +154,88 @@ if "chat_history" not in st.session_state:
 if "active_tx" not in st.session_state:
     st.session_state["active_tx"] = None
 
-# Sidebar layout for Analyst settings & Navigation
+# Sidebar Navigation & Status
 with st.sidebar:
-    st.image("https://img.icons8.com/nolan/96/security-shield.png", width=64)
-    st.title("Fraud Intelligence")
-    st.caption("Enterprise AI Decision Support System")
-    
+    st.title("🛡️ Fraud Workstation")
+    st.caption("AI-Powered Risk Intelligence Platform (2026)")
     st.divider()
     
-    st.markdown("### Workflow Navigation")
     menu = st.radio(
-        "Select Active Page",
+        "Navigation",
         [
-            "🏠 Console Overview",
-            "🔍 Transaction Analysis",
-            "⚖️ Risk Attribution (SHAP)",
-            "📚 Evidence & Similar Cases",
-            "🧪 MLOps & Model Registry",
-            "💬 Forensic Analyst Copilot"
+            "🏠 Workstation Overview",
+            "🔍 Live Transaction Audit",
+            "⚖️ SHAP Risk Attribution",
+            "📚 RAG Evidence Retrieval",
+            "🧪 Model Registry & MLOps",
+            "💬 Forensic Copilot"
         ]
     )
-    
     st.divider()
-    st.caption("Active Backend Connection: Localhost FastAPI (Port 8000)")
+    
+    # Quick API Health Check Indicator
+    try:
+        r = requests.get(f"{API_URL}/health", timeout=1.5)
+        if r.status_code == 200:
+            st.success("🟢 Decision Engine: Online")
+        else:
+            st.warning("🟡 Decision Engine: Degraded")
+    except Exception:
+        st.error("🔴 Decision Engine: Offline (Run uvicorn)")
 
-# ----------------- HOME / OVERVIEW -----------------
-if menu == "🏠 Console Overview":
-    st.title("🏠 Fraud Intelligence Console Overview")
+# ----------------- 1. WORKSTATION OVERVIEW -----------------
+if menu == "🏠 Workstation Overview":
+    st.title("🛡️ Enterprise Fraud Intelligence Workstation")
     st.write(
-        "Welcome to the production-grade fraud investigation workstation. This platform integrates real-time "
-        "machine learning models, feature engineering pipelines, SHAP explainers, and LLM-powered RAG retrieval "
-        "to assist fraud analysts in reviewing risky transactions."
+        "Welcome to the **Online Payments Fraud Intelligence Workstation**. This production-grade "
+        "decision platform leverages real-time ML risk scoring, feature pipelines, SHAP explainers, "
+        "and Llama-3.3 LLM forensic reports for high-stakes payment review."
     )
     
     col1, col2, col3 = st.columns(3)
     with col1:
-        st.metric(label="Decision Engine Status", value="ACTIVE", delta="API Online")
+        st.metric("Champion Model", "XGBoost Classifier", "Optuna Tuned")
     with col2:
-        st.metric(label="Operational Threshold", value="0.35", delta="Business Optimized")
+        st.metric("Decision Threshold", "0.35", "Cost Optimized")
     with col3:
-        st.metric(label="Serving Model", value="XGBoost Classifier", delta="Active Champion")
+        st.metric("RAG Vector Index", "ChromaDB + BM25", "Hybrid RRF")
         
-    st.subheader("Decision Pipeline Architecture")
+    st.subheader("System Architecture")
     st.markdown("""
-    1. **Transaction Ingestion**: Receives payload from payment gateway.
-    2. **Real-time Feature Engineering**: Calculates geographic distance, customer velocity metrics, and Network PageRank scores.
-    3. **Model Prediction**: Active champion model predicts fraud probability.
-    4. **SHAP Attribution**: Computes feature importances for local transaction context.
-    5. **Hybrid Retrieval**: Extracts similar historical cases from ChromaDB and BM25 store.
-    6. **Forensic Briefing**: Llama-3.3 model generates a structured forensic analyst report on Groq.
+    * **Data Quality Layer**: Native dataset contract validation with schema enforcement.
+    * **Feature Engineering**: Calculates Haversine distance, Network PageRank, and rolling 1h/24h velocity ratios.
+    * **Serving API**: FastAPI microservice serving real-time probabilities and SHAP explanations.
+    * **Forensic Copilot**: Hybrid RAG vector retrieval paired with Groq LLM reasoning.
     """)
-    st.info("👈 Navigate to **Transaction Analysis** to evaluate live transactions and run predictions.")
 
-# ----------------- REAL-TIME TRANSACTION ANALYSIS -----------------
-elif menu == "🔍 Transaction Analysis":
-    st.title("🔍 Real-time Transaction Analysis")
+# ----------------- 2. LIVE TRANSACTION AUDIT -----------------
+elif menu == "🔍 Live Transaction Audit":
+    st.title("🔍 Real-time Transaction Audit Engine")
     
-    # Input panel inside the main page, grouped cleanly
     st.subheader("Transaction Input Payload")
-    with st.form("tx_input_form"):
+    with st.form("tx_form"):
         col1, col2, col3 = st.columns(3)
         with col1:
-            amt = st.number_input("Transaction Amount ($)", min_value=0.01, value=SAMPLE_TX["amt"])
-            merchant = st.text_input("Merchant Name", value=SAMPLE_TX["merchant"])
-            category = st.selectbox("Category", ["shopping_net", "grocery_pos", "gas_transport", "entertainment", "food_dining", "travel"])
+            amt = st.number_input("Amount ($)", min_value=0.01, value=DEFAULT_TX["amt"])
+            merchant = st.text_input("Merchant Name", value=DEFAULT_TX["merchant"])
+            category = st.selectbox("Category", ["shopping_net", "grocery_pos", "gas_transport", "entertainment", "food_dining", "travel"], index=0)
         with col2:
-            gender = st.selectbox("Gender", ["F", "M"])
-            state = st.text_input("Cardholder State Code (2 letter)", value=SAMPLE_TX["state"])
-            zip_code = st.number_input("Zip Code", min_value=1000, max_value=99999, value=SAMPLE_TX["zip"])
+            gender = st.selectbox("Cardholder Gender", ["F", "M"], index=0)
+            state = st.text_input("State Code", value=DEFAULT_TX["state"])
+            zip_code = st.number_input("Zip Code", min_value=1000, max_value=99999, value=DEFAULT_TX["zip"])
         with col3:
-            age = st.slider("Cardholder Age", 18, 100, 35)
-            lat = st.number_input("Home Latitude", value=SAMPLE_TX["lat"])
-            long = st.number_input("Home Longitude", value=SAMPLE_TX["long"])
+            age = st.slider("Cardholder Age", 18, 90, value=DEFAULT_TX["age"])
+            lat = st.number_input("Home Latitude", value=DEFAULT_TX["lat"])
+            long = st.number_input("Home Longitude", value=DEFAULT_TX["long"])
             
-        with st.expander("Advanced Geographical & Metadata Fields"):
-            gcol1, gcol2 = st.columns(2)
-            with gcol1:
-                merch_lat = st.number_input("Merchant Latitude", value=SAMPLE_TX["merch_lat"])
-                merch_long = st.number_input("Merchant Longitude", value=SAMPLE_TX["merch_long"])
-            with gcol2:
-                city_pop = st.number_input("City Population", value=SAMPLE_TX["city_pop"])
-                job = st.text_input("Cardholder Job Title", value=SAMPLE_TX["job"])
+        with st.expander("Geographical & Cardholder Metadata"):
+            mcol1, mcol2 = st.columns(2)
+            with mcol1:
+                merch_lat = st.number_input("Merchant Latitude", value=DEFAULT_TX["merch_lat"])
+                merch_long = st.number_input("Merchant Longitude", value=DEFAULT_TX["merch_long"])
+            with mcol2:
+                city_pop = st.number_input("City Population", value=DEFAULT_TX["city_pop"])
+                job = st.text_input("Job Title", value=DEFAULT_TX["job"])
                 
         submit_btn = st.form_submit_button("🛡️ Execute Fraud Analysis")
 
@@ -196,11 +247,11 @@ elif menu == "🔍 Transaction Analysis":
             "merchant": merchant,
             "category": category,
             "amt": amt,
-            "first": "John",
-            "last": "Doe",
+            "first": "Alex",
+            "last": "Taylor",
             "gender": gender,
-            "street": "123 Main St",
-            "city": "New York",
+            "street": "100 Innovation Way",
+            "city": "Metropolis",
             "state": state,
             "zip": int(zip_code),
             "lat": lat,
@@ -208,36 +259,35 @@ elif menu == "🔍 Transaction Analysis":
             "city_pop": int(city_pop),
             "job": job,
             "dob": dob,
-            "trans_num": "tx_streamlit_ui",
+            "trans_num": f"tx_{int(datetime.now().timestamp())}",
             "unix_time": int(datetime.now().timestamp()),
             "merch_lat": merch_lat,
             "merch_long": merch_long
         }
         
-        payload = {"transaction": tx_data}
         st.session_state["active_tx"] = tx_data
+        payload = {"transaction": tx_data}
         
-        with st.status("Querying decision engine API...") as status:
+        with st.status("Analyzing payload through decision pipeline...") as status:
             try:
-                pred_response = requests.post(f"{API_URL}/predict", json=payload)
-                explain_response = requests.post(f"{API_URL}/explain", json=payload)
+                p_res = requests.post(f"{API_URL}/predict", json=payload)
+                e_res = requests.post(f"{API_URL}/explain", json=payload)
                 
-                if pred_response.status_code == 200 and explain_response.status_code == 200:
-                    st.session_state["pred_data"] = pred_response.json()
-                    st.session_state["explain_data"] = explain_response.json()
+                if p_res.status_code == 200 and e_res.status_code == 200:
+                    st.session_state["pred_data"] = p_res.json()
+                    st.session_state["explain_data"] = e_res.json()
                     st.session_state["analysis_done"] = True
-                    st.session_state["chat_history"] = [] # reset chat context
-                    status.update(label="Analysis Complete", state="complete", expanded=False)
+                    st.session_state["chat_history"] = []
+                    status.update(label="Analysis Completed", state="complete", expanded=False)
                 else:
                     st.session_state["analysis_done"] = False
                     status.update(label="API Error", state="error", expanded=True)
-                    st.error(f"Predict Status: {pred_response.status_code}, Explain Status: {explain_response.status_code}")
-            except Exception as e:
+            except Exception as err:
                 st.session_state["analysis_done"] = False
-                status.update(label="Connection Failed", state="error", expanded=True)
-                st.error(f"Failed to connect to API server: {str(e)}. Please start the FastAPI backend service.")
+                status.update(label="Backend Connection Error", state="error", expanded=True)
+                st.error(f"Could not connect to FastAPI server at {API_URL}: {err}")
 
-    # Show results if analysis is complete
+    # Render results
     if st.session_state["analysis_done"] and st.session_state["pred_data"]:
         pred = st.session_state["pred_data"]
         explain = st.session_state["explain_data"]
@@ -245,203 +295,140 @@ elif menu == "🔍 Transaction Analysis":
         decision = pred["decision"]
         threshold = pred["threshold_applied"]
         
-        # Confidence calculation
-        if prob >= threshold:
-            conf = ((prob - threshold) / (1.0 - threshold)) * 100
-        else:
-            conf = ((threshold - prob) / threshold) * 100
-        conf = 50.0 + (conf / 2.0)
-        conf = min(conf, 99.9)
-        
         st.divider()
         st.subheader("Decision Engine Output")
         
-        # Main Metrics banner
-        mcol1, mcol2, mcol3, mcol4 = st.columns(4)
-        with mcol1:
+        m1, m2, m3, m4 = st.columns(4)
+        with m1:
             st.metric("System Decision", decision)
-        with mcol2:
+        with m2:
             st.metric("Fraud Probability", f"{prob * 100:.2f}%")
-        with mcol3:
-            st.metric("Decision Confidence", f"{conf:.1f}%")
-        with mcol4:
-            st.metric("Operational Threshold", f"{threshold:.2f}")
-
-        # Business Impact & Decision Status Box
+        with m3:
+            st.metric("Applied Threshold", f"{threshold:.2f}")
+        with m4:
+            conf = min(50.0 + abs(prob - threshold) * 100, 99.9)
+            st.metric("Model Confidence", f"{conf:.1f}%")
+            
         if prob >= threshold:
-            st.error(f"🚨 **Action Required**: This transaction exceeds the operational threshold of {threshold} with a fraud probability of {prob * 100:.2f}%. Immediately flag for investigation.")
+            st.error(f"🚨 **ALERT**: Transaction flagged for elevated fraud risk. Probability ({prob*100:.1f}%) exceeds operational threshold ({threshold}).")
         else:
-            st.success(f"✅ **Clear**: This transaction is below the risk threshold of {threshold} and is approved for processing.")
-
-        # Forensic Brief Markdown
-        st.subheader("📄 Forensic Analyst Brief")
+            st.success(f"✅ **APPROVED**: Transaction approved. Risk score ({prob*100:.1f}%) within acceptable boundaries.")
+            
+        st.subheader("📄 Forensic Analyst Report")
         st.markdown(explain["analyst_report"])
-    else:
-        st.info("Fill out the transaction payload form above and click 'Execute Fraud Analysis' to run model evaluation.")
 
-# ----------------- RISK ATTRIBUTION (SHAP) -----------------
-elif menu == "⚖️ Risk Attribution (SHAP)":
-    st.title("⚖️ Model Risk Attribution & Explainability")
+# ----------------- 3. SHAP RISK ATTRIBUTION -----------------
+elif menu == "⚖️ SHAP Risk Attribution":
+    st.title("⚖️ SHAP Feature Attribution & Model Explainability")
     
     if st.session_state["analysis_done"] and st.session_state["explain_data"]:
         explain = st.session_state["explain_data"]
-        shap_insights = explain.get("shap_insights", {})
+        insights = explain.get("shap_insights", {})
         
-        st.write("SHAP values quantify how much each transaction attribute contributed to the model's fraud probability prediction.")
+        st.write("SHAP (SHapley Additive exPlanations) breaks down the exact marginal contribution of each feature to the final risk score.")
         
-        col1, col2 = st.columns(2)
-        with col1:
-            st.subheader("🔴 Top Risk Drivers")
+        c1, c2 = st.columns(2)
+        with c1:
+            st.subheader("🔴 Top Fraud Risk Drivers")
             drivers = []
-            for item in shap_insights.get("top_fraud_contributors", []):
+            for item in insights.get("top_fraud_contributors", []):
                 title, desc = explain_shap_feature(item['feature'], item['value'])
-                drivers.append({"Feature": title, "Context / Alert Signal": desc, "Weight": round(item['shap_value'], 4)})
-            
+                drivers.append({"Feature": title, "Alert Context": desc, "Value": item['value'], "SHAP Impact": round(item['shap_value'], 4)})
             if drivers:
                 st.dataframe(pd.DataFrame(drivers), use_container_width=True, hide_index=True)
-            else:
-                st.write("No major risk drivers found.")
                 
-        with col2:
-            st.subheader("🟢 Top Safety Signals")
+        with c2:
+            st.subheader("🟢 Top Legitimacy Signals")
             safety = []
-            for item in shap_insights.get("top_legit_contributors", []):
+            for item in insights.get("top_legit_contributors", []):
                 title, desc = explain_shap_feature(item['feature'], item['value'])
-                safety.append({"Feature": title, "Context / Legitimacy Signal": desc, "Weight": round(item['shap_value'], 4)})
-                
+                safety.append({"Feature": title, "Legitimacy Context": desc, "Value": item['value'], "SHAP Impact": round(item['shap_value'], 4)})
             if safety:
                 st.dataframe(pd.DataFrame(safety), use_container_width=True, hide_index=True)
+    else:
+        st.info("Execute a transaction analysis on 'Live Transaction Audit' to view SHAP feature attribution.")
+
+# ----------------- 4. RAG EVIDENCE RETRIEVAL -----------------
+elif menu == "📚 RAG Evidence Retrieval":
+    st.title("📚 RAG Historical Case Evidence Retrieval")
+    st.write("Query the ChromaDB + BM25 hybrid vector index for matching historical fraud patterns.")
+    
+    q_col1, q_col2 = st.columns([3, 1])
+    with q_col1:
+        query_text = st.text_input("Evidence Retrieval Query", value="high value electronics transaction cross state lines mule redirection")
+    with q_col2:
+        top_k = st.slider("Top Cases", 1, 5, 3)
+        
+    if st.button("🔍 Search Case Database"):
+        try:
+            res = requests.post(f"{API_URL}/copilot/evidence", json={"query": query_text, "top_k": top_k})
+            if res.status_code == 200:
+                cases = res.json().get("cases", [])
+                st.subheader(f"Retrieved {len(cases)} Relevant Case Precedents")
+                for c in cases:
+                    with st.expander(f"Case ID: {c.get('id')} | Category: {c.get('category')} | Fraud Flag: {c.get('is_fraud')}"):
+                        st.write(c.get("text"))
             else:
-                st.write("No major safety signals found.")
-    else:
-        st.info("Please execute an active transaction analysis on the 'Transaction Analysis' page first to view explainability details.")
+                st.error("Evidence retrieval failed.")
+        except Exception as e:
+            st.error(f"Failed to query evidence index: {e}")
 
-# ----------------- EVIDENCE & SIMILAR CASES -----------------
-elif menu == "📚 Evidence & Similar Cases":
-    st.title("📚 Evidence Retrieval & Customer Spending History")
+# ----------------- 5. MODEL REGISTRY & MLOPS -----------------
+elif menu == "🧪 Model Registry & MLOps":
+    st.title("🧪 Model Registry & Benchmark Audit")
     
-    if st.session_state["analysis_done"] and st.session_state["active_tx"]:
-        tx = st.session_state["active_tx"]
-        st.write("Retrieval-augmented evidence comparison and risk timeline analysis.")
-        
-        col1, col2 = st.columns([1.2, 1])
-        
-        with col1:
-            st.subheader("📈 Customer Risk & Spending Timeline")
-            timeline_df = get_mock_timeline(tx["amt"])
-            st.line_chart(timeline_df.set_index("Date")[["Amount ($)", "Risk Score"]])
-            
-            tcol1, tcol2, tcol3 = st.columns(3)
-            with tcol1:
-                st.metric("Avg Amount", f"${timeline_df['Amount ($)'].mean():.2f}")
-            with tcol2:
-                st.metric("Max Risk", f"{timeline_df['Risk Score'].max() * 100:.1f}%")
-            with tcol3:
-                st.metric("Merchant Diversity", f"{timeline_df['Merchant'].nunique()} / 30")
-                
-            st.write("**Recent Activity Logs (Last 5 transactions)**")
-            st.dataframe(timeline_df.tail(5).iloc[::-1], use_container_width=True, hide_index=True)
-            
-        with col2:
-            st.subheader("🔍 Similar Historical Fraud Cases")
-            st.write("Top cases matched using vector and lexical search matching:")
-            
-            cases = [
-                {
-                    "Type": "Mule Address Redirection",
-                    "Similarity": "92.4%",
-                    "Signals": "Cross-state Shipping",
-                    "Outcome": "Charged Back",
-                    "Saved Loss": "$1,450"
-                },
-                {
-                    "Type": "Account Takeover",
-                    "Similarity": "85.1%",
-                    "Signals": "Velocity Spike",
-                    "Outcome": "Blocked",
-                    "Saved Loss": "$3,200"
-                }
-            ]
-            st.dataframe(pd.DataFrame(cases), use_container_width=True, hide_index=True)
-    else:
-        st.info("Please execute an active transaction analysis on the 'Transaction Analysis' page first to view historical patterns.")
-
-# ----------------- MLOPS & MODEL REGISTRY -----------------
-elif menu == "🧪 MLOps & Model Registry":
-    st.title("🧪 MLOps Experimentation & Model Registry")
-    st.write("Registry audit trail and candidate comparison dashboard from MLflow runs.")
-    
-    col1, col2 = st.columns([1, 1.3])
+    col1, col2 = st.columns([1, 1.2])
     with col1:
-        st.subheader("🏆 Active Champion Model")
-        champion_details = {
-            "Registered Model": "XGBClassifier",
-            "Registry Version": "v1 (Production)",
-            "Promotion Date": "2026-06-24",
-            "Primary Selection Metric": "PR-AUC",
-            "Serving Endpoint": "/predict",
-            "Business Objective": "Minimize operational fraud losses and transaction review costs while controlling false positive friction rates."
+        st.subheader("🏆 Champion Model Details")
+        details = {
+            "Model Name": "XGBClassifier",
+            "Optimization Engine": "Optuna (3 Trials)",
+            "Primary Metric": "PR-AUC (0.95)",
+            "Cost Optimization": "$1,241.97 Min Loss",
+            "Pipeline Artifacts": "best_model.pkl, feature_pipeline.pkl"
         }
-        st.dataframe(pd.Series(champion_details, name="Value").to_frame(), use_container_width=True)
+        st.dataframe(pd.Series(details, name="Configuration").to_frame(), use_container_width=True)
         
     with col2:
-        st.subheader("📊 Candidate Comparison Summary")
-        comparison_data = {
-            "Model": ["Logistic Regression", "Random Forest", "CatBoost", "LightGBM", "XGBoost (Best Candidate)"],
-            "Precision": [0.71, 0.83, 0.91, 0.90, 0.92],
-            "Recall": [0.84, 0.81, 0.85, 0.84, 0.86],
-            "F1": [0.77, 0.82, 0.88, 0.87, 0.89],
-            "PR-AUC": [0.79, 0.88, 0.94, 0.93, 0.95],
-            "Business Cost Metric": ["High", "Medium", "Lowest", "Low", "Lowest"]
+        st.subheader("📊 Classifier Benchmark Comparison")
+        bench = {
+            "Algorithm": ["Logistic Regression", "Random Forest", "LightGBM", "CatBoost", "XGBoost (Champion)"],
+            "Precision": [0.71, 0.83, 0.90, 0.91, 0.92],
+            "Recall": [0.84, 0.81, 0.84, 0.85, 0.86],
+            "PR-AUC": [0.79, 0.88, 0.93, 0.94, 0.95]
         }
-        st.dataframe(pd.DataFrame(comparison_data), use_container_width=True, hide_index=True)
-        
-    st.subheader("📝 Champion Selection Forensic Audit Report")
-    st.markdown("""
-    * **Optuna Tuned Hyperparameters**: Best parameters were found to be `n_estimators=100`, `max_depth=6`, and `learning_rate=0.1` after 3 optimization trials.
-    * **PR-AUC Dominance**: XGBoost achieved the highest PR-AUC score of **0.95**, demonstrating optimal precision-recall balance across severe class imbalance.
-    * **Review Cost Savings**: Lowest overall project cost under the tuned operational threshold (minimizing manual analyst review overheads).
-    * **Stable Temporal Validation**: Validated on future temporal sets (2020 test data) showing robust resilience against temporal feature drift.
-    """)
+        st.dataframe(pd.DataFrame(bench), use_container_width=True, hide_index=True)
 
-# ----------------- FORENSIC ANALYST COPILOT -----------------
-elif menu == "💬 Forensic Analyst Copilot":
-    st.title("💬 Forensic Analyst Copilot Chat")
+# ----------------- 6. FORENSIC COPILOT -----------------
+elif menu == "💬 Forensic Copilot":
+    st.title("💬 Forensic Analyst LLM Copilot")
     
     if st.session_state["analysis_done"] and st.session_state["explain_data"]:
         explain = st.session_state["explain_data"]
         report_context = explain.get("analyst_report", "")
         
-        st.write("Interact with the copilot to ask specific questions about the flagged transaction drivers.")
+        st.caption("Ask questions about the active transaction forensic report.")
         
-        # Display chat message history using streamlit native message controls
-        for chat in st.session_state["chat_history"]:
-            with st.chat_message(chat["role"]):
-                st.write(chat["content"])
+        for msg in st.session_state["chat_history"]:
+            with st.chat_message(msg["role"]):
+                st.write(msg["content"])
                 
-        user_input = st.chat_input("Ask a question about the forensic findings...")
-        if user_input:
-            # Display user message
+        user_q = st.chat_input("Ask about transaction risk drivers...")
+        if user_q:
             with st.chat_message("user"):
-                st.write(user_input)
-            st.session_state["chat_history"].append({"role": "user", "content": user_input})
+                st.write(user_q)
+            st.session_state["chat_history"].append({"role": "user", "content": user_q})
             
-            # Request response from API
-            payload = {
-                "question": user_input,
-                "report_context": report_context
-            }
             try:
-                with st.spinner("Copilot analyzing context..."):
-                    chat_response = requests.post(f"{API_URL}/copilot/chat", json=payload)
-                    if chat_response.status_code == 200:
-                        ans = chat_response.json()["answer"]
+                with st.spinner("Copilot generating response..."):
+                    c_res = requests.post(f"{API_URL}/copilot/chat", json={"question": user_q, "report_context": report_context})
+                    if c_res.status_code == 200:
+                        ans = c_res.json()["answer"]
                         with st.chat_message("assistant"):
                             st.write(ans)
                         st.session_state["chat_history"].append({"role": "assistant", "content": ans})
-                    else:
-                        st.error("Copilot request error.")
             except Exception as e:
-                st.error(f"Chat communication error: {str(e)}")
+                st.error(f"Copilot API error: {e}")
     else:
-        st.info("Please execute an active transaction analysis on the 'Transaction Analysis' page first to enable the Forensic Copilot.")
+        st.info("Perform a transaction audit first to engage with the Forensic Copilot.")
+
