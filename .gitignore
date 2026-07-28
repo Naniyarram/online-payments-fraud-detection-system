@@ -63,6 +63,9 @@ data/processed/
 data/raw/
 outputs/
 
+# Local workspace & draft notes
+Interview Ready Preparation/
+
 # VS Code / IDEs
 .vscode/
 .idea/
