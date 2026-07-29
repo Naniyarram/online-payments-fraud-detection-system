@@ -64,8 +64,10 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+import os
+
 # Constants
-API_URL = "http://localhost:8000"
+API_URL = os.getenv("API_URL", "http://localhost:8000")
 
 # Default sample transaction values
 DEFAULT_TX = {

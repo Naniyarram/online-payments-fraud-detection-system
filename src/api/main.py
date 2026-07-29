@@ -55,6 +55,15 @@ async def global_exception_handler(request: Request, exc: Exception):
         content={"message": "Internal server error. Transaction analysis failed.", "detail": str(exc)}
     )
 
+@app.get("/")
+def root():
+    return {
+        "service": "Fraud Intelligence Platform API",
+        "status": "online",
+        "documentation": "/docs",
+        "health": "/health"
+    }
+
 @app.get("/health")
 def health_check():
     return {"status": "healthy", "service": "fraud-intelligence-platform"}
