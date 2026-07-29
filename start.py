@@ -1,4 +1,119 @@
 import subprocess
+import os
+import sys
+
+def main():
+    port = os.getenv("PORT", "8080")
+    print(f"Starting unified Fraud Intelligence Platform on port {port}...")
+
+    # Start FastAPI backend server bound to Render's port
+    backend_proc = subprocess.Popen(
+        [sys.executable, "-m", "uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", port]
+    )
+
+    try:
+        backend_proc.wait()
+    except KeyboardInterrupt:
+        backend_proc.terminate()
+
+if __name__ == "__main__":
+    main()
+import os
+import sys
+
+def main():
+    port = os.getenv("PORT", "8080")
+    print(f"Starting unified Fraud Intelligence Platform on port {port}...")
+
+    # Start FastAPI backend server bound to Render's port
+    backend_proc = subprocess.Popen(
+        [sys.executable, "-m", "uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", port]
+    )
+
+    try:
+        backend_proc.wait()
+    except KeyboardInterrupt:
+        backend_proc.terminate()
+
+if __name__ == "__main__":
+    main()
+import os
+import sys
+
+def main():
+    port = os.getenv("PORT", "8080")
+    print(f"Starting unified Fraud Intelligence Platform on port {port}...")
+
+    # Start FastAPI backend server bound to Render's port
+    backend_proc = subprocess.Popen(
+        [sys.executable, "-m", "uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", port]
+    )
+
+    try:
+        backend_proc.wait()
+    except KeyboardInterrupt:
+        backend_proc.terminate()
+
+if __name__ == "__main__":
+    main()
+import os
+import sys
+
+def main():
+    port = os.getenv("PORT", "8080")
+    print(f"Starting unified Fraud Intelligence Platform on port {port}...")
+
+    # Start FastAPI backend server bound to Render's port
+    backend_proc = subprocess.Popen(
+        [sys.executable, "-m", "uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", port]
+    )
+
+    try:
+        backend_proc.wait()
+    except KeyboardInterrupt:
+        backend_proc.terminate()
+
+if __name__ == "__main__":
+    main()
+import os
+import sys
+
+def main():
+    port = os.getenv("PORT", "8080")
+    print(f"Starting unified Fraud Intelligence Platform on port {port}...")
+
+    # Start FastAPI backend server bound to Render's port
+    backend_proc = subprocess.Popen(
+        [sys.executable, "-m", "uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", port]
+    )
+
+    try:
+        backend_proc.wait()
+    except KeyboardInterrupt:
+        backend_proc.terminate()
+
+if __name__ == "__main__":
+    main()
+import time
+import os
+import sys
+
+def main():
+    port = os.getenv("PORT", "8080")
+    print(f"Starting unified Fraud Intelligence Platform on port {port}...")
+
+    # Start FastAPI backend server bound to Render's port
+    backend_proc = subprocess.Popen(
+        [sys.executable, "-m", "uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", port]
+    )
+
+    try:
+        backend_proc.wait()
+    except KeyboardInterrupt:
+        backend_proc.terminate()
+
+if __name__ == "__main__":
+    main()
 import time
 import os
 import sys
