@@ -67,7 +67,8 @@ st.markdown("""
 import os
 
 # Constants
-API_URL = os.getenv("API_URL", "http://localhost:8000")
+API_URL = st.secrets.get("backend", {}).get("API_URL", os.getenv("API_URL", "http://localhost:8000"))
+GROQ_API_KEY = st.secrets.get("groq", {}).get("GROQ_API_KEY", os.getenv("GROQ_API_KEY", ""))
 
 # Default sample transaction values
 DEFAULT_TX = {
