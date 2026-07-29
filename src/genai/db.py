@@ -72,33 +72,36 @@ PAST_CASES = [
 
 class HybridRetriever:
     def __init__(self, db_path: str = "./data/chroma_db"):
-        logger.info("Initializing Hybrid Vector-Sparse Retriever...")
-        self.chroma_client = chromadb.PersistentClient(path=db_path)
+        logger.info("Initializing Hybrid Vector-Sparse Retriever (Lazy Embedding Mode)...")
+        self.db_path = db_path
+        self.chroma_client = chromadb.PersistentClient(path=self.db_path)
+        self.emb_fn = None
+        self.collection = None
         
-        # Use sentence-transformers embedding function
-        self.emb_fn = embedding_functions.SentenceTransformerEmbeddingFunction(
-            model_name="all-MiniLM-L6-v2"
-        )
-        
-        # Setup Collection
-        self.collection = self.chroma_client.get_or_create_collection(
-            name="historical_cases",
-            embedding_function=self.emb_fn
-        )
-        
-        # Populate DB if empty
-        if self.collection.count() == 0:
-            logger.info("Populating vector store with historical cases...")
-            self.collection.add(
-                documents=[c["text"] for c in PAST_CASES],
-                metadatas=[{"category": c["category"], "is_fraud": c["is_fraud"]} for c in PAST_CASES],
-                ids=[c["id"] for c in PAST_CASES]
-            )
-            
-        # Initialize BM25 Index
+        # Initialize BM25 Index immediately (lightweight memory footprint)
         self.corpus = PAST_CASES
         self.tokenized_corpus = [c["text"].lower().split(" ") for c in self.corpus]
         self.bm25 = BM25Okapi(self.tokenized_corpus)
+
+    def _get_collection(self):
+        """Lazy loader for SentenceTransformer embedding function & ChromaDB collection."""
+        if self.collection is None:
+            logger.info("Lazy loading SentenceTransformer embedding function ('all-MiniLM-L6-v2')...")
+            self.emb_fn = embedding_functions.SentenceTransformerEmbeddingFunction(
+                model_name="all-MiniLM-L6-v2"
+            )
+            self.collection = self.chroma_client.get_or_create_collection(
+                name="historical_cases",
+                embedding_function=self.emb_fn
+            )
+            if self.collection.count() == 0:
+                logger.info("Populating vector store with historical cases...")
+                self.collection.add(
+                    documents=[c["text"] for c in PAST_CASES],
+                    metadatas=[{"category": c["category"], "is_fraud": c["is_fraud"]} for c in PAST_CASES],
+                    ids=[c["id"] for c in PAST_CASES]
+                )
+        return self.collection
 
     def retrieve(self, query: str, top_k: int = 2) -> List[Dict[str, Any]]:
         """
@@ -106,8 +109,9 @@ class HybridRetriever:
         """
         logger.info(f"Retrieving historical cases for query: '{query}'")
         
-        # 1. Dense (ChromaDB)
-        dense_results = self.collection.query(
+        # 1. Dense (ChromaDB - Lazy Loaded)
+        collection = self._get_collection()
+        dense_results = collection.query(
             query_texts=[query],
             n_results=len(self.corpus)
         )
