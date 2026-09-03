@@ -2,6 +2,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from src.api.routers import router, load_artifacts
+from src.api.health import health_router
 from src.utils.logger import get_logger
 from contextlib import asynccontextmanager
 import time
@@ -34,8 +35,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include Router
+# Include Routers
 app.include_router(router)
+app.include_router(health_router)
 
 # Request response logger middleware
 @app.middleware("http")
@@ -61,9 +63,7 @@ def root():
         "service": "Fraud Intelligence Platform API",
         "status": "online",
         "documentation": "/docs",
-        "health": "/health"
+        "health": "/health",
+        "readiness": "/ready",
     }
 
-@app.get("/health")
-def health_check():
-    return {"status": "healthy", "service": "fraud-intelligence-platform"}

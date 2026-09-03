@@ -6,7 +6,16 @@ client = TestClient(app)
 def test_health_endpoint():
     response = client.get("/health")
     assert response.status_code == 200
-    assert response.json()["status"] == "healthy"
+    data = response.json()
+    assert data["status"] == "healthy"
+    assert data["service"] == "Enterprise Fraud Intelligence API"
+    assert "version" in data
+    assert "timestamp" in data
+
+def test_ready_endpoint_returns_503_without_model():
+    """Without model artifacts loaded, /ready should return 503."""
+    response = client.get("/ready")
+    assert response.status_code == 503
 
 def test_predict_endpoint_mock():
     # Submit standard transaction details

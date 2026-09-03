@@ -20,7 +20,7 @@ A production-ready decision-support system designed to help fraud analysts evalu
 In financial fraud systems, raw model probabilities (e.g. `Fraud: 94%`) are not enough for compliance and audit requirements. Analysts need to know **why** the model flagged a transaction and have clear, readable documentation for chargeback disputes. 
 
 This project solves that problem by building a decoupled **Analyst Workstation**:
-1. **Predicts Risk**: Implements a Scikit-Learn classification pipeline to evaluate transaction fraud risk with high accuracy (**99.2% ROC-AUC**).
+1. **Predicts Risk**: Implements a classification pipeline with multi-model comparison (XGBoost, LightGBM, CatBoost, Random Forest). The production champion XGBoost classifier achieves **0.95 PR-AUC** on held-out data, selected via cost-optimized threshold tuning.
 2. **Explains the Prediction**: Calculates local feature importances using **SHAP** to isolate top risk drivers.
 3. **Drafts Forensic Summaries**: Automatically feeds model scores and top SHAP attributes to **Llama 3 (via Groq and LangChain)** to compile a structured, plain-language audit brief.
 4. **Interactive Chat**: Exposes a chat-based assistant allowing investigators to query the transaction payload and model decisions directly.

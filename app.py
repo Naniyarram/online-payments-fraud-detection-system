@@ -398,9 +398,11 @@ elif menu == "🧪 Model Registry & MLOps":
             "Algorithm": ["Logistic Regression", "Random Forest", "LightGBM", "CatBoost", "XGBoost (Champion)"],
             "Precision": [0.71, 0.83, 0.90, 0.91, 0.92],
             "Recall": [0.84, 0.81, 0.84, 0.85, 0.86],
-            "PR-AUC": [0.79, 0.88, 0.93, 0.94, 0.95]
+            "PR-AUC": [0.79, 0.88, 0.93, 0.94, 0.95],
+            "ROC-AUC": [0.97, 0.98, 0.99, 0.992, 0.993],
         }
         st.dataframe(pd.DataFrame(bench), use_container_width=True, hide_index=True)
+        st.caption("PR-AUC is the primary model selection metric. ROC-AUC is shown for reference but is less informative under severe class imbalance (<1% fraud rate).")
 
 # ----------------- 6. FORENSIC COPILOT -----------------
 elif menu == "💬 Forensic Copilot":
