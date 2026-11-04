@@ -66,9 +66,19 @@ st.markdown("""
 
 import os
 
-# Constants
-API_URL = st.secrets.get("backend", {}).get("API_URL", os.getenv("API_URL", "http://localhost:8000"))
-GROQ_API_KEY = st.secrets.get("groq", {}).get("GROQ_API_KEY", os.getenv("GROQ_API_KEY", ""))
+# Resolve API URL: top-level secret > nested secret > env var > localhost
+API_URL = (
+    st.secrets.get("API_URL", "")
+    or st.secrets.get("backend", {}).get("API_URL", "")
+    or os.getenv("API_URL", "")
+    or "http://127.0.0.1:8000"
+).rstrip("/")
+
+GROQ_API_KEY = (
+    st.secrets.get("GROQ_API_KEY", "")
+    or st.secrets.get("groq", {}).get("GROQ_API_KEY", "")
+    or os.getenv("GROQ_API_KEY", "")
+)
 
 # Default sample transaction values
 DEFAULT_TX = {
@@ -176,13 +186,22 @@ with st.sidebar:
     )
     st.divider()
     
-    # Quick API Health Check Indicator
+    # API Health + Readiness Check
     try:
-        r = requests.get(f"{API_URL}/health", timeout=1.5)
+        r = requests.get(f"{API_URL}/health", timeout=(5, 45))
         if r.status_code == 200:
-            st.success("🟢 Decision Engine: Online")
+            try:
+                rdy = requests.get(f"{API_URL}/ready", timeout=(5, 20))
+                if rdy.status_code == 200:
+                    st.success("🟢 Decision Engine: Online & Ready")
+                else:
+                    st.warning("🟡 Decision Engine: Online, model loading...")
+            except Exception:
+                st.warning("🟡 Decision Engine: Online, readiness unknown")
         else:
             st.warning("🟡 Decision Engine: Degraded")
+    except requests.exceptions.Timeout:
+        st.error("🔴 Decision Engine: Timeout (backend may be waking up)")
     except Exception:
         st.error("🔴 Decision Engine: Offline (Run uvicorn)")
 
@@ -273,8 +292,8 @@ elif menu == "🔍 Live Transaction Audit":
         
         with st.status("Analyzing payload through decision pipeline...") as status:
             try:
-                p_res = requests.post(f"{API_URL}/predict", json=payload)
-                e_res = requests.post(f"{API_URL}/explain", json=payload)
+                p_res = requests.post(f"{API_URL}/predict", json=payload, timeout=(5, 45))
+                e_res = requests.post(f"{API_URL}/explain", json=payload, timeout=(5, 90))
                 
                 if p_res.status_code == 200 and e_res.status_code == 200:
                     st.session_state["pred_data"] = p_res.json()
@@ -364,7 +383,7 @@ elif menu == "📚 RAG Evidence Retrieval":
         
     if st.button("🔍 Search Case Database"):
         try:
-            res = requests.post(f"{API_URL}/copilot/evidence", json={"query": query_text, "top_k": top_k})
+            res = requests.post(f"{API_URL}/copilot/evidence", json={"query": query_text, "top_k": top_k}, timeout=(5, 90))
             if res.status_code == 200:
                 cases = res.json().get("cases", [])
                 st.subheader(f"Retrieved {len(cases)} Relevant Case Precedents")
@@ -426,7 +445,7 @@ elif menu == "💬 Forensic Copilot":
             
             try:
                 with st.spinner("Copilot generating response..."):
-                    c_res = requests.post(f"{API_URL}/copilot/chat", json={"question": user_q, "report_context": report_context})
+                    c_res = requests.post(f"{API_URL}/copilot/chat", json={"question": user_q, "report_context": report_context}, timeout=(5, 90))
                     if c_res.status_code == 200:
                         ans = c_res.json()["answer"]
                         with st.chat_message("assistant"):
